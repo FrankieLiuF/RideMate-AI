@@ -6,4 +6,8 @@ python-dotenv>=1.0.0
 pydantic>=2.10.0
 sqlalchemy>=2.0.0
 python-multipart>=0.0.6
-mcp>=1.0.0
+
+# For MCP Server support (optional):
+#   pip install mcp --no-deps
+#   pip install jsonschema jsonschema-specifications pydantic-settings pyjwt
+starlette<0.47.0

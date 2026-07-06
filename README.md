@@ -127,6 +127,12 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Optional: install MCP server support
+# (MCP uses stdio transport — no web server needed)
+pip install mcp --no-deps
+pip install jsonschema jsonschema-specifications pydantic-settings pyjwt
+pip install "starlette<0.47.0"
 ```
 
 > ⚠️ **Note:** The virtual environment is **not** committed to GitHub (listed in `.gitignore`). Every developer must create their own after cloning.
