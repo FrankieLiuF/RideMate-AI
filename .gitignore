@@ -5,3 +5,5 @@ __pycache__/
 *.db
 .claude/
 image copy*.png
+DEMO_SCRIPT.md
+MASTER_PROMPT.md
