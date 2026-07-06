@@ -183,6 +183,16 @@ def book_ride(user_id: str, ride_id: int, seats: int = 1) -> Dict[str, Any]:
         if ride.available_seats == 0:
             ride.status = "full"
         db.add(booking)
+
+        # Sync the driver's active broadcast so the Drivers tab reflects the new seat count
+        driver_user_id = ride.driver.user_id
+        active_broadcast = db.query(DriverStatus).filter(
+            DriverStatus.user_id == driver_user_id,
+            DriverStatus.is_active == 1,
+        ).first()
+        if active_broadcast:
+            active_broadcast.seats_available = ride.available_seats
+
         db.commit()
         db.refresh(booking)
         return {
@@ -213,6 +223,16 @@ def cancel_booking(user_id: str, booking_id: int) -> Dict[str, Any]:
         ride.available_seats += booking.seats
         if ride.status == "full":
             ride.status = "active"
+
+        # Sync driver's active broadcast seat count
+        driver_user_id = ride.driver.user_id
+        active_broadcast = db.query(DriverStatus).filter(
+            DriverStatus.user_id == driver_user_id,
+            DriverStatus.is_active == 1,
+        ).first()
+        if active_broadcast:
+            active_broadcast.seats_available = ride.available_seats
+
         db.commit()
         return {"status": "success", "message": f"Booking #{booking.id} cancelled. Seats freed up."}
     finally:
