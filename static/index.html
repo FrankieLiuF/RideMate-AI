@@ -45,7 +45,7 @@
 
     /* ===== Layout ===== */
     .app-container {
-      display: flex; min-height: calc(100vh - 28px); max-width: 1200px;
+      display: flex; height: calc(100vh - 28px); max-width: 1200px;
       margin: 0 auto; border-radius: 32px; overflow: hidden;
       background: var(--bg); box-shadow: 0 20px 60px rgba(0,0,0,0.25);
       transition: background 0.3s;
@@ -422,7 +422,7 @@
   async function refreshBoard() {
     const el = document.getElementById('boardContent');
     try {
-      const r = await fetch('/api/v1/board'); const data = await r.json();
+      const r = await fetch('/api/v1/board?_=' + Date.now()); const data = await r.json();
       if (!data.messages?.length) {
         el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No messages yet.<br>Use chat to post one!</p></div>';
         return;
@@ -444,7 +444,8 @@
   async function refreshDrivers() {
     const el = document.getElementById('driversContent');
     try {
-      const r = await fetch('/api/v1/drivers/active'); const data = await r.json();
+      // Cache-busting timestamp prevents browser from serving stale data
+      const r = await fetch('/api/v1/drivers/active?_=' + Date.now()); const data = await r.json();
       if (!data.drivers?.length) {
         el.innerHTML = '<div class="empty-state"><div class="icon">🚗</div><p>No drivers active.<br>Be the first!</p></div>';
         return;
