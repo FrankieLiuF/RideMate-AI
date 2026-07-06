@@ -236,7 +236,7 @@ def end_driver_broadcast(user_id: str) -> dict:
 # ── Entry Point ─────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("🚗 RideMate AI MCP Server starting...", file=sys.stderr)
+    print("RideMate AI MCP Server starting...", file=sys.stderr)
     print("   Exposing 14 tools via MCP stdio transport", file=sys.stderr)
     print("   Connect from Claude Desktop, Antigravity IDE, or any MCP client", file=sys.stderr)
     mcp.run()

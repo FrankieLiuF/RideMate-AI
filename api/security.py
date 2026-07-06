@@ -40,7 +40,7 @@ PUBLIC_PATHS = {"/", "/health", "/api/v1/health", "/api/v1/test", "/static", "/d
 # For demo/video purposes, generate and log the key so it's visible in terminal
 if API_KEY_REQUIRED:
     print(f"\n{'='*60}")
-    print(f"🔐 API Key authentication ENABLED")
+    print(f"[Security] API Key authentication ENABLED")
     print(f"   Key: {API_KEY}")
     print(f"   Include in requests as header: X-API-Key: {API_KEY}")
     print(f"{'='*60}\n")
@@ -104,7 +104,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._buckets: dict[str, list[float]] = defaultdict(list)
-        print(f"🛡️  Rate limiter active: {max_requests} req / {window_seconds}s per IP")
+        print(f"[Security] Rate limiter active: {max_requests} req / {window_seconds}s per IP")
 
     async def dispatch(self, request: Request, call_next: Callable):
         # Skip public paths from rate limiting
