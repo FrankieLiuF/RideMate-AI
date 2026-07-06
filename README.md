@@ -197,6 +197,7 @@ Then configure your MCP client:
 | http://localhost:8000/api/v1/health | Health check |
 | http://localhost:8000/api/v1/board | Community board messages |
 | http://localhost:8000/api/v1/drivers/active | Active driver broadcasts |
+| http://localhost:8000/api/v1/rides/active | All active rides with optional location filters |
 | http://localhost:8000/api/v1/welcome/{user_id} | Personalized welcome + recommendations |
 
 ---
@@ -275,6 +276,29 @@ Get recent community board messages (direct DB query, no Gemini).
 ### `GET /api/v1/drivers/active`
 
 Get currently active driver broadcasts with live location and seat count.
+
+### `GET /api/v1/rides/active`
+
+Fast, AI-free search for active rides. Query params: `from_location`, `to_location` (optional), `max_results` (default 20). Returns deduplicated results ordered by recency.
+
+```json
+// GET /api/v1/rides/active?from_location=University&max_results=5
+{
+  "status": "success",
+  "total_found": 2,
+  "results": [
+    {
+      "id": 1,
+      "driver": "Alice",
+      "from_location": "University Campus",
+      "to_location": "Downtown",
+      "departure_time": "2026-07-07T09:00:00",
+      "available_seats": 2,
+      "price": 5.5
+    }
+  ]
+}
+```
 
 ### `GET /api/v1/welcome/{user_id}`
 
