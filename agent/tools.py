@@ -9,15 +9,28 @@ from database.models import User, Ride, Booking, DriverStatus, CommunityMessage
 # ── User / Profile Tools ────────────────────────────────────────────
 
 def get_or_create_user(user_id: str, name: Optional[str] = None, role: str = "rider") -> Dict[str, Any]:
-    """Get an existing user or create a new one."""
+    """Get an existing user or create a new one.
+
+    If the user already exists but a more-permissive role is requested
+    (e.g., upgrading from 'rider' to 'both' or 'driver'), the role is updated.
+    This allows Gemini to upgrade a user's role during a conversation.
+    """
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.user_id == user_id).first()
         if not user:
             user = User(user_id=user_id, name=name or user_id, role=role)
             db.add(user)
-            db.commit()
-            db.refresh(user)
+        else:
+            # Update name if a real name is provided (not just user_id)
+            if name and name != user_id:
+                user.name = name
+            # Upgrade role if a more-permissive one is requested
+            # Hierarchy: rider < driver/both → allow upgrade, never downgrade
+            if role in ("driver", "both") and user.role == "rider":
+                user.role = role
+        db.commit()
+        db.refresh(user)
         return {
             "status": "success",
             "user": {"id": user.id, "user_id": user.user_id, "name": user.name, "role": user.role},
