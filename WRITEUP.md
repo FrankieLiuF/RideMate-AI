@@ -4,10 +4,6 @@
 
 **Track:** Concierge Agents
 
-**GitHub:** https://github.com/FrankieLiuF/RideMate-AI
-
-**Demo Video:** [Paste YouTube link here after uploading]
-
 ---
 
 ## Problem Statement
