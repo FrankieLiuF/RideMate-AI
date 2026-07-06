@@ -111,6 +111,18 @@ def create_ride(
         db.add(ride)
         db.commit()
         db.refresh(ride)
+
+        # Auto-broadcast: make the driver visible on the live Drivers tab
+        # so riders can discover this ride immediately — no reliance on Gemini
+        # remembering to call broadcast_status separately.
+        broadcast_status(
+            user_id=user_id,
+            location=from_location,
+            status_message=f"Ride to {to_location} — {available_seats} seats available at ${price:.2f}",
+            seats_available=available_seats,
+            destination=to_location,
+        )
+
         return {
             "status": "success",
             "message": f"Ride created! ID: {ride.id}",
@@ -141,7 +153,7 @@ def search_rides(
             query = query.filter(Ride.from_location.ilike(f"%{from_location}%"))
         if to_location:
             query = query.filter(Ride.to_location.ilike(f"%{to_location}%"))
-        rides = query.limit(max_results).all()
+        rides = query.order_by(Ride.created_at.desc()).limit(max_results).all()
         return {
             "status": "success",
             "total_found": len(rides),
@@ -304,9 +316,10 @@ def get_recommendations(user_id: str) -> Dict[str, Any]:
             if len(parts) == 2:
                 matches = db.query(Ride).filter(
                     Ride.status == "active",
+                    Ride.driver_id != user.id,
                     Ride.from_location.ilike(f"%{parts[0]}%"),
                     Ride.to_location.ilike(f"%{parts[1]}%"),
-                ).limit(3).all()
+                ).order_by(Ride.created_at.desc()).limit(3).all()
                 for ride in matches:
                     if ride.id not in seen_ride_ids:
                         seen_ride_ids.add(ride.id)
@@ -325,9 +338,10 @@ def get_recommendations(user_id: str) -> Dict[str, Any]:
         for sr in saved_routes:
             matches = db.query(Ride).filter(
                 Ride.status == "active",
+                Ride.driver_id != user.id,
                 Ride.from_location.ilike(f"%{sr.get('from', '')}%"),
                 Ride.to_location.ilike(f"%{sr.get('to', '')}%"),
-            ).limit(2).all()
+            ).order_by(Ride.created_at.desc()).limit(2).all()
             for ride in matches:
                 if ride.id not in seen_ride_ids:
                     seen_ride_ids.add(ride.id)
@@ -342,7 +356,34 @@ def get_recommendations(user_id: str) -> Dict[str, Any]:
                         "reason": "Matches your saved route",
                     })
 
-        # 4. Stats
+        # 4. Fallback: if no personalized recommendations, show recent active rides
+        #    so new users still see something in the Suggested tab.
+        if not recommendations:
+            fallback_rides = (
+                db.query(Ride)
+                .filter(
+                    Ride.status == "active",
+                    Ride.driver_id != user.id,
+                )
+                .order_by(Ride.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            for ride in fallback_rides:
+                if ride.id not in seen_ride_ids:
+                    seen_ride_ids.add(ride.id)
+                    recommendations.append({
+                        "ride_id": ride.id,
+                        "driver": ride.driver.name,
+                        "from": ride.from_location,
+                        "to": ride.to_location,
+                        "departure": ride.departure_time,
+                        "seats": ride.available_seats,
+                        "price": ride.price,
+                        "reason": "Available ride",
+                    })
+
+        # 5. Stats
         total_bookings = len(past_bookings)
         saved_prefs = list(prefs.keys()) if prefs else []
 

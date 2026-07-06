@@ -324,7 +324,6 @@
     <div class="chat-messages" id="chat"></div>
     <div class="quick-row">
       <button class="quick-btn" onclick="quickSend('I want to offer a ride. From University Campus to Downtown, departure tomorrow 9am, 3 seats, \$5.50 per seat.')">🚘 Offer</button>
-      <button class="quick-btn" onclick="quickSend('I just arrived at Aber Station. Waiting 20 min, 3 seats to Downtown.')">📍 Arrived</button>
       <button class="quick-btn" onclick="quickSend('Find me a ride to Downtown tomorrow morning')">🔍 Search</button>
       <button class="quick-btn" onclick="quickSend('Post to board: Anyone splitting a ride at 5pm?')">📋 Post</button>
       <button class="quick-btn" onclick="quickSend('Show my profile')">👤 Me</button>
@@ -370,13 +369,17 @@
   async function loadWelcome() {
     const el = document.getElementById('foryouContent');
     try {
-      const r = await fetch('/api/v1/welcome/demo_user');
-      const data = await r.json();
-      if (data.status !== 'success') throw new Error('no data');
+      // Fetch personalized recommendations AND all active rides in parallel
+      const [welcomeR, ridesR] = await Promise.all([
+        fetch('/api/v1/welcome/demo_user'),
+        fetch('/api/v1/rides/active?max_results=20')
+      ]);
+      const data = await welcomeR.json();
+      const ridesData = await ridesR.json();
 
-      const u = data.user || {};
-      const recs = data.recommendations || [];
-      const stats = data.stats || {};
+      const u = (data && data.user) || {};
+      const recs = (data && data.recommendations) || [];
+      const stats = (data && data.stats) || {};
 
       let html = `<div class="welcome-card">
         <div class="greeting">Welcome back, ${esc(u.name || 'there')}! 👋</div>
@@ -386,6 +389,9 @@
           <span>🔖 ${(stats.saved_preferences || []).length} prefs</span>
         </div>
       </div>`;
+
+      // Track seen ride IDs to avoid duplicates between sections
+      const seenIds = new Set(recs.map(r => r.ride_id));
 
       if (recs.length > 0) {
         html += '<div style="font-size:11px;font-weight:700;color:var(--text-light);margin:12px 0 6px;">RECOMMENDED FOR YOU</div>';
@@ -397,16 +403,31 @@
             <button class="rec-action" onclick="quickSend('Book ride #${r.ride_id} for me, 1 seat')">Book Now</button>
           </div>
         `).join('');
-      } else {
-        html += '<div class="empty-state"><div class="icon">🔍</div><p>No recommendations yet.<br>Take a ride and I will learn your routes!</p></div>';
+      }
+
+      // All active rides — deduped against personalized recs
+      const allRides = (ridesData && ridesData.results) || [];
+      const freshRides = allRides.filter(r => !seenIds.has(r.id));
+      if (freshRides.length > 0) {
+        html += '<div style="font-size:11px;font-weight:700;color:var(--text-light);margin:12px 0 6px;">🛵 ALL AVAILABLE RIDES</div>';
+        html += freshRides.map(r => `
+          <div class="rec-card">
+            <div class="rec-reason">🕐 ${fmtTime(r.departure)}</div>
+            <div class="rec-route">${esc(r.driver)}: ${esc(r.from)} → ${esc(r.to)}</div>
+            <div class="rec-meta">🪑 ${r.available_seats} seats &nbsp; 💰 $${r.price}</div>
+            <button class="rec-action" onclick="quickSend('Book ride #${r.id} for me, 1 seat')">Book Now</button>
+          </div>
+        `).join('');
+      } else if (recs.length === 0) {
+        html += '<div class="empty-state"><div class="icon">🔍</div><p>No rides available right now.<br>Be the first to offer one!</p></div>';
       }
 
       el.innerHTML = html;
     } catch(e) {
+      console.error('loadWelcome error:', e);
       el.innerHTML = '<div class="welcome-card"><div class="greeting">Welcome to RideMate AI!</div><div class="stats">Your personal ride coordinator</div></div><div class="empty-state"><p>Start chatting to get recommendations!</p></div>';
     }
   }
-
   // ── Tabs ──
   function switchTab(name) {
     currentTab = name;
@@ -509,7 +530,7 @@
       if (d.tool_calls_made?.length) addTool(d.tool_calls_made.join('  ·  '));
       addChat(d.message || 'Done.', 'msg-bot');
       if (d.agents_involved?.length) addTrail(d.agents_involved);
-      refreshBoard(); refreshDrivers();
+      refreshBoard(); refreshDrivers(); loadWelcome();
     } catch(e) { el.remove(); addChat('Unable to reach server.', 'msg-bot'); }
   }
   function sendMessage() {

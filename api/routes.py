@@ -210,6 +210,25 @@ async def welcome_back(user_id: str):
     }
 
 
+@router.get("/rides/active")
+async def get_active_rides(from_location: str = "", to_location: str = "", max_results: int = 20):
+    """
+    Search active rides — direct DB query, no Gemini.
+
+    This is a FAST endpoint for the frontend to list available rides without
+    going through the AI chat pipeline. Supports optional location filters.
+
+    Used by the Suggested/Board tabs to show all active rides, especially
+    important for new users who have no personalized recommendations yet.
+    """
+    from agent.tools import search_rides
+    return search_rides(
+        from_location=from_location,
+        to_location=to_location,
+        max_results=max_results,
+    )
+
+
 @router.get("/test")
 async def test():
     """Quick connectivity check — no DB, no AI, instant response."""
